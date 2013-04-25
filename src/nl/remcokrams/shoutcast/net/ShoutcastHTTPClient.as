@@ -197,6 +197,18 @@ package nl.remcokrams.shoutcast.net
 			_socket.connect(_request.host, _request.port);
 		}
 		
+		/** Clean up */
+		public function dispose():void
+		{
+			_reconnectMode = false;
+			clearTimeout(_reconnectTimeout);
+			_socket.removeEventListener(Event.CONNECT, onSocketConnect);
+			_socket.removeEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
+			_socket.removeEventListener(IOErrorEvent.IO_ERROR, onSocketError);
+			_socket.removeEventListener(Event.CLOSE, onSocketError);
+			close();
+		}
+		
 		public function startAutoReconnect():void {
 			_reconnectMode = true;
 			reconnect();

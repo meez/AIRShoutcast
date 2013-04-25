@@ -50,6 +50,7 @@ package nl.remcokrams.shoutcast
 			var handler:IAudioFormatHandler = _handler, 
 				tag:FLVTag = _flvTag,
 				bytesRead:uint;
+				
 			while(input.bytesAvailable > 0 && (readUntilPlay && output.bufferFilledPercentage < .99)) 
 			{
 				if(_mode == MODE_HANDLER)
@@ -67,6 +68,8 @@ package nl.remcokrams.shoutcast
 					if(_readUntilNextMetadata == 0)
 						_mode = MODE_METADATA;
 				}
+				
+				
 				else if(_mode == MODE_METADATA)
 				{
 					if(_metadataLength == -1)

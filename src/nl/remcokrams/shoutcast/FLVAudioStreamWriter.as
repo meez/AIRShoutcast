@@ -74,6 +74,14 @@ package nl.remcokrams.shoutcast
 			return bufferTimeLost > (_bufferThresholdPercentage * _bufferFillTime);
 		}
 		
+		/** Clean up */
+		public function dispose():void
+		{
+			stop();
+			_tagBytes.clear();
+			try { _netConnection.close(); } catch (e:Error){}
+		}
+		
 		/**
 		 * 
 		 * If the buffer length falls below this percentage of bufferFillTime
