@@ -1,0 +1,135 @@
+[1mdiff --git a/src/nl/remcokrams/shoutcast/FLVAudioStreamWriter.as b/src/nl/remcokrams/shoutcast/FLVAudioStreamWriter.as[m
+[1mindex bf39622..6652011 100644[m
+[1m--- a/src/nl/remcokrams/shoutcast/FLVAudioStreamWriter.as[m
+[1m+++ b/src/nl/remcokrams/shoutcast/FLVAudioStreamWriter.as[m
+[36m@@ -74,6 +74,14 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 			return bufferTimeLost > (_bufferThresholdPercentage * _bufferFillTime);[m
+ 		}[m
+ 		[m
+[32m+[m		[32m/** Clean up */[m
+[32m+[m		[32mpublic function dispose():void[m
+[32m+[m		[32m{[m
+[32m+[m			[32mstop();[m
+[32m+[m			[32m_tagBytes.clear();[m
+[32m+[m			[32mtry { _netConnection.close(); } catch (e:Error){}[m
+[32m+[m		[32m}[m
+[32m+[m[41m		[m
+ 		/**[m
+ 		 * [m
+ 		 * If the buffer length falls below this percentage of bufferFillTime[m
+[1mdiff --git a/src/nl/remcokrams/shoutcast/ShoutcastPlayer.as b/src/nl/remcokrams/shoutcast/ShoutcastPlayer.as[m
+[1mindex 4e96b4f..709965f 100644[m
+[1m--- a/src/nl/remcokrams/shoutcast/ShoutcastPlayer.as[m
+[1m+++ b/src/nl/remcokrams/shoutcast/ShoutcastPlayer.as[m
+[36m@@ -75,6 +75,8 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 		protected var _bufferMonitor:Timer;[m
+ 		protected var _autoReconnect:Boolean;[m
+ 		[m
+[32m+[m		[32mprotected var _hasReceivedData:Boolean;[m
+[32m+[m[41m		[m
+ 		public function ShoutcastPlayer()[m
+ 		{	[m
+ 			init();[m
+[36m@@ -175,6 +177,8 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 			return _lastErrorCode;[m
+ 		}[m
+ 		[m
+[32m+[m		[32mpublic function get hasReceivedData():Boolean { return _hasReceivedData; }[m
+[32m+[m[41m		[m
+ 		/**[m
+ 		 *[m
+ 		 * Toggles the current state between pause and play<br>[m
+[36m@@ -250,7 +254,14 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 			changeState( ShoutcastPlayerStates.STOPPED );[m
+ 		}[m
+ 		[m
+[31m-		[m
+[32m+[m		[32m/** Clean up */[m
+[32m+[m		[32mpublic function dispose():void[m
+[32m+[m		[32m{[m
+[32m+[m			[32mstop();[m
+[32m+[m			[32m_bufferMonitor.removeEventListener(TimerEvent.TIMER, monitorStream);[m
+[32m+[m			[32m_flvAudioStreamWriter.dispose();[m
+[32m+[m			[32m_stream.dispose();[m
+[32m+[m		[32m}[m
+ 		[m
+ 		/*[m
+ 		[m
+[36m@@ -386,6 +397,7 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 			if(!_flvAudioStreamWriter.needMoreData) //we got enough data to play...so leave now[m
+ 				return;[m
+ 			[m
+[32m+[m[41m				[m
+ 			if(_stream.bytesAvailable == 0 && _autoReconnect)[m
+ 			{[m
+ 				var t:int = getTimer();[m
+[36m@@ -415,12 +427,16 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 		}[m
+ 		[m
+ 		protected function onMetadata(value:String):void {[m
+[31m-			if(value)[m
+[32m+[m			[32mif (value)[m
+[32m+[m			[32m{[m
+[32m+[m				[32m_hasReceivedData = true;[m
+ 				dispatchEvent( new ShoutcastMetadataEvent(ShoutcastMetadataEvent.METADATA_AVAILABLE, false, false, value) );[m
+[32m+[m			[32m}[m
+ 		}[m
+ 		[m
+ 		protected function init():void {[m
+ 			_state = ShoutcastPlayerStates.STOPPED;[m
+[32m+[m			[32m_hasReceivedData = false;[m
+ 			[m
+ 			_flvAudioStreamWriter = new FLVAudioStreamWriter();[m
+ 			[m
+[1mdiff --git a/src/nl/remcokrams/shoutcast/ShoutcastStreamReader.as b/src/nl/remcokrams/shoutcast/ShoutcastStreamReader.as[m
+[1mindex 6691b3f..368769b 100644[m
+[1m--- a/src/nl/remcokrams/shoutcast/ShoutcastStreamReader.as[m
+[1m+++ b/src/nl/remcokrams/shoutcast/ShoutcastStreamReader.as[m
+[36m@@ -50,6 +50,7 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 			var handler:IAudioFormatHandler = _handler, [m
+ 				tag:FLVTag = _flvTag,[m
+ 				bytesRead:uint;[m
+[32m+[m[41m				[m
+ 			while(input.bytesAvailable > 0 && (readUntilPlay && output.bufferFilledPercentage < .99)) [m
+ 			{[m
+ 				if(_mode == MODE_HANDLER)[m
+[36m@@ -67,6 +68,8 @@[m [mpackage nl.remcokrams.shoutcast[m
+ 					if(_readUntilNextMetadata == 0)[m
+ 						_mode = MODE_METADATA;[m
+ 				}[m
+[32m+[m[41m				[m
+[32m+[m[41m				[m
+ 				else if(_mode == MODE_METADATA)[m
+ 				{[m
+ 					if(_metadataLength == -1)[m
+[1mdiff --git a/src/nl/remcokrams/shoutcast/net/ShoutcastHTTPClient.as b/src/nl/remcokrams/shoutcast/net/ShoutcastHTTPClient.as[m
+[1mindex 4e6b974..9e1cdb7 100644[m
+[1m--- a/src/nl/remcokrams/shoutcast/net/ShoutcastHTTPClient.as[m
+[1m+++ b/src/nl/remcokrams/shoutcast/net/ShoutcastHTTPClient.as[m
+[36m@@ -197,6 +197,18 @@[m [mpackage nl.remcokrams.shoutcast.net[m
+ 			_socket.connect(_request.host, _request.port);[m
+ 		}[m
+ 		[m
+[32m+[m		[32m/** Clean up */[m
+[32m+[m		[32mpublic function dispose():void[m
+[32m+[m		[32m{[m
+[32m+[m			[32m_reconnectMode = false;[m
+[32m+[m			[32mclearTimeout(_reconnectTimeout);[m
+[32m+[m			[32m_socket.removeEventListener(Event.CONNECT, onSocketConnect);[m
+[32m+[m			[32m_socket.removeEventListener(ProgressEvent.SOCKET_DATA, onSocketData);[m
+[32m+[m			[32m_socket.removeEventListener(IOErrorEvent.IO_ERROR, onSocketError);[m
+[32m+[m			[32m_socket.removeEventListener(Event.CLOSE, onSocketError);[m
+[32m+[m			[32mclose();[m
+[32m+[m		[32m}[m
+[32m+[m[41m		[m
+ 		public function startAutoReconnect():void {[m
+ 			_reconnectMode = true;[m
+ 			reconnect();[m
+warning: LF will be replaced by CRLF in src/nl/remcokrams/shoutcast/FLVAudioStreamWriter.as.
+The file will have its original line endings in your working directory.
+warning: LF will be replaced by CRLF in src/nl/remcokrams/shoutcast/ShoutcastPlayer.as.
+The file will have its original line endings in your working directory.
+warning: LF will be replaced by CRLF in src/nl/remcokrams/shoutcast/ShoutcastStreamReader.as.
+The file will have its original line endings in your working directory.
+warning: LF will be replaced by CRLF in src/nl/remcokrams/shoutcast/net/ShoutcastHTTPClient.as.
+The file will have its original line endings in your working directory.
