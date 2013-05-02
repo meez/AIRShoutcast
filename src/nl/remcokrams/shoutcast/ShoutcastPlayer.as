@@ -75,8 +75,6 @@ package nl.remcokrams.shoutcast
 		protected var _bufferMonitor:Timer;
 		protected var _autoReconnect:Boolean;
 		
-		protected var _hasReceivedData:Boolean;
-		
 		public function ShoutcastPlayer()
 		{	
 			init();
@@ -177,8 +175,6 @@ package nl.remcokrams.shoutcast
 			return _lastErrorCode;
 		}
 		
-		public function get hasReceivedData():Boolean { return _hasReceivedData; }
-		
 		/**
 		 *
 		 * Toggles the current state between pause and play<br>
@@ -254,14 +250,7 @@ package nl.remcokrams.shoutcast
 			changeState( ShoutcastPlayerStates.STOPPED );
 		}
 		
-		/** Clean up */
-		public function dispose():void
-		{
-			stop();
-			_bufferMonitor.removeEventListener(TimerEvent.TIMER, monitorStream);
-			_flvAudioStreamWriter.dispose();
-			_stream.dispose();
-		}
+		
 		
 		/*
 		
@@ -397,7 +386,6 @@ package nl.remcokrams.shoutcast
 			if(!_flvAudioStreamWriter.needMoreData) //we got enough data to play...so leave now
 				return;
 			
-				
 			if(_stream.bytesAvailable == 0 && _autoReconnect)
 			{
 				var t:int = getTimer();
@@ -427,16 +415,12 @@ package nl.remcokrams.shoutcast
 		}
 		
 		protected function onMetadata(value:String):void {
-			if (value)
-			{
-				_hasReceivedData = true;
+			if(value)
 				dispatchEvent( new ShoutcastMetadataEvent(ShoutcastMetadataEvent.METADATA_AVAILABLE, false, false, value) );
-			}
 		}
 		
 		protected function init():void {
 			_state = ShoutcastPlayerStates.STOPPED;
-			_hasReceivedData = false;
 			
 			_flvAudioStreamWriter = new FLVAudioStreamWriter();
 			
