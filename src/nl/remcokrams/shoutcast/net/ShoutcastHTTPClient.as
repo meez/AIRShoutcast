@@ -34,6 +34,8 @@ package nl.remcokrams.shoutcast.net
 		public static const RESPONSE_HEADER_MATCH:RegExp 	   = /(?P<name>[^:]+):[\s]*(?P<value>.+?)\r\n/g;
 		public static const RESPONSE_ICY_STATUS_MATCH:RegExp   = /ICY (?P<status>[0-9]{3}) [A-Za-z\s]+\r\n/g;
 		
+		public static const URL_MATCH:RegExp = /^http(s)?:\/\/((\d+\.\d+\.\d+\.\d+)|(([\w-]+\.)+([a-z,A-Z][\w-]*)))(:[1-9][0-9]*)?(\/([\w-.\/:%+@&=]+[\w- .\/?:%+@&=]*)?)?(#(.*))?$/i;
+		
 		protected var _request:HTTPRequest;
 		protected var _socket:Socket;
 		protected var _mode:int;
@@ -50,6 +52,7 @@ package nl.remcokrams.shoutcast.net
 		
 		public var responseCallback:Function = function (status:int, headers:Vector.<URLRequestHeader>):void {};
 		public var errorCallback:Function 	 = function (status:int):void {};
+		public var redirectCallback:Function = function (url:String):void {};
 		
 		public function ShoutcastHTTPClient()
 		{
@@ -277,6 +280,29 @@ package nl.remcokrams.shoutcast.net
 									_lastFoundIndex = RESPONSE_HTTP_STATUS_MATCH.lastIndex;
 									break;
 								
+								// redirect
+								case 302 :
+									// Wait til we've read all available data
+									if (_socket.bytesAvailable <= 1)
+									{
+										var res:String = String(_responseData);
+										var lines:Array = res.split(CRLF);
+										// 3rd line (starting at 0) contains redirect location
+										var loc:String = String(lines[2]);
+										// "location:" = 9 chars
+										var url:String = loc.slice(9);
+										// remove spaces
+										url = url.replace(/[\s\r\n]*/gim, '');
+										
+										// test for validity
+										if (URL_MATCH.test(url))
+										{
+											redirectCallback(url);
+											return;
+										}
+									}
+									break;
+									
 								default :
 									close();
 									errorCallback(_status);

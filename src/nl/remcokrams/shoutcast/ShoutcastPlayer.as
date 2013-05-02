@@ -218,6 +218,10 @@ package nl.remcokrams.shoutcast
 		public function play(url:String=null):void {
 			if(url != null)
 			{
+				// remove port if followed by url params - shoutcast doesn't like that
+				var r:RegExp = new RegExp(":[0-9]{1,5}/");
+				url = url.replace(r, '/');
+				
 				reset(RESET_PROPS);
 				
 				_request = createRequest(url);
@@ -371,6 +375,13 @@ package nl.remcokrams.shoutcast
 			}
 		}
 		
+		/** Socket has hit a 302 redirect. Attempt to play new location */
+		protected function onSocketRedirect(url:String):void
+		{
+			trace("[ShoutcastPlayer] Redirecting to " + url);
+			this.play(url);
+		}
+		
 		protected function pickAudioHandler():Boolean {
 			_currentAudioHandler = IAudioFormatHandler( _audioFormatHandlers[ _streamInfo.contentType ] );
 			
@@ -449,6 +460,7 @@ package nl.remcokrams.shoutcast
 			_stream = new ShoutcastHTTPClient();
 			_stream.responseCallback = onSocketResponse;
 			_stream.errorCallback	= onSocketError;
+			_stream.redirectCallback = onSocketRedirect;
 			
 			var clz:Class;
 			
