@@ -218,10 +218,6 @@ package nl.remcokrams.shoutcast
 		public function play(url:String=null):void {
 			if(url != null)
 			{
-				// remove port if followed by url params - shoutcast doesn't like that
-				var r:RegExp = new RegExp(":[0-9]{1,5}/");
-				url = url.replace(r, '/');
-				
 				reset(RESET_PROPS);
 				
 				_request = createRequest(url);
@@ -379,7 +375,7 @@ package nl.remcokrams.shoutcast
 		protected function onSocketRedirect(url:String):void
 		{
 			trace("[ShoutcastPlayer] Redirecting to " + url);
-			this.play(url);
+			dispatchEvent(new ShoutcastPlayerEvent(ShoutcastPlayerEvent.REDIRECT, "", 0, 0, url));
 		}
 		
 		protected function pickAudioHandler():Boolean {

@@ -34,8 +34,6 @@ package nl.remcokrams.shoutcast.net
 		public static const RESPONSE_HEADER_MATCH:RegExp 	   = /(?P<name>[^:]+):[\s]*(?P<value>.+?)\r\n/g;
 		public static const RESPONSE_ICY_STATUS_MATCH:RegExp   = /ICY (?P<status>[0-9]{3}) [A-Za-z\s]+\r\n/g;
 		
-		public static const URL_MATCH:RegExp = /^http(s)?:\/\/((\d+\.\d+\.\d+\.\d+)|(([\w-]+\.)+([a-z,A-Z][\w-]*)))(:[1-9][0-9]*)?(\/([\w-.\/:%+@&=]+[\w- .\/?:%+@&=]*)?)?(#(.*))?$/i;
-		
 		protected var _request:HTTPRequest;
 		protected var _socket:Socket;
 		protected var _mode:int;
@@ -280,28 +278,26 @@ package nl.remcokrams.shoutcast.net
 									_lastFoundIndex = RESPONSE_HTTP_STATUS_MATCH.lastIndex;
 									break;
 								
-								// redirect
+								 //redirect
 								case 302 :
 									// Wait til we've read all available data
 									if (_socket.bytesAvailable <= 1)
 									{
-										var res:String = String(_responseData);
-										var lines:Array = res.split(CRLF);
-										// 3rd line (starting at 0) contains redirect location
-										var loc:String = String(lines[2]);
-										// "location:" = 9 chars
-										var url:String = loc.slice(9);
-										// remove spaces
-										url = url.replace(/[\s\r\n]*/gim, '');
+										var urlObject:Object = HTTPRequest.MATCH_URL.exec(String(_responseData));
 										
-										// test for validity
-										if (URL_MATCH.test(url))
+										// No URL found to redirect to
+										if (urlObject == null)
 										{
-											redirectCallback(url);
+											close();
+											errorCallback(_status);
 											return;
 										}
+											
+										redirectCallback(urlObject[0]);
+										return;
 									}
 									break;
+									
 									
 								default :
 									close();
@@ -383,7 +379,7 @@ internal class HTTPRequest {
 	public var method:String;
 	public var requestHeaders:Vector.<URLRequestHeader>;
 	
-	private static const MATCH_URL:RegExp = /(?P<protocol>http:\/\/|ftp:\/\/) (?:www\.)? (?P<host>[^\/:]+) (?P<path>\/.+)? (?:\: (?P<port>[0-9]+) )?/x;
+	public static const MATCH_URL:RegExp = /(?P<protocol>http:\/\/|ftp:\/\/) (?:www\.)? (?P<host>[^\/:]+)  (?:\: (?P<port>[0-9]+) )?  (?P<path>\/.+)? /x;
 	
 	public function HTTPRequest(request:URLRequest):void {
 		method = request.method;
