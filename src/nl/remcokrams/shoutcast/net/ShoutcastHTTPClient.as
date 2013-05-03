@@ -12,6 +12,7 @@ package nl.remcokrams.shoutcast.net
 	import flash.utils.IDataInput;
 	import flash.utils.clearTimeout;
 	import flash.utils.setTimeout;
+	import nl.remcokrams.shoutcast.ShoutcastPlayer;
 	
 	
 	/**
@@ -280,6 +281,15 @@ package nl.remcokrams.shoutcast.net
 								
 								 //redirect
 								case 302 :
+									
+									if (!ShoutcastPlayer.FOLLOW_REDIRECTS)
+									{
+										// Handle redirect as error
+										close();
+										errorCallback(_status);
+										break readLoop;
+									}
+									
 									// Wait til we've read all available data
 									if (_socket.bytesAvailable <= 1)
 									{

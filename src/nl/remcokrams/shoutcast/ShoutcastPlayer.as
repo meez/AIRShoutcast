@@ -52,6 +52,8 @@ package nl.remcokrams.shoutcast
 	
 	public class ShoutcastPlayer extends EventDispatcher
 	{
+		public static var FOLLOW_REDIRECTS:Boolean = true;
+		
 		public static const DEFAULT_FORMAT_HANDLERS:Vector.<Class> = Vector.<Class>([
 			AACHandler,
 			MP3Handler
@@ -375,7 +377,7 @@ package nl.remcokrams.shoutcast
 		protected function onSocketRedirect(url:String):void
 		{
 			trace("[ShoutcastPlayer] Redirecting to " + url);
-			dispatchEvent(new ShoutcastPlayerEvent(ShoutcastPlayerEvent.REDIRECT, "", 0, 0, url));
+			play(url);
 		}
 		
 		protected function pickAudioHandler():Boolean {
