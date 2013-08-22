@@ -364,7 +364,7 @@ package nl.remcokrams.shoutcast.net
 			else if(progressCallback != null)
 			{
 				_loaded += e.bytesLoaded;
-				progressCallback();
+				progressCallback.apply();
 			}
 		}
 		
