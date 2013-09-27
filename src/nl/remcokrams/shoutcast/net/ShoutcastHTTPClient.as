@@ -163,7 +163,10 @@ package nl.remcokrams.shoutcast.net
 		
 		public function readUTFBytes(length:uint):String
 		{
-			return _socket.readUTFBytes(length);
+			// DW: Attempting to defend against 2030 EOF Errors (socket disconnect or no bytes available)
+			if (_socket.connected && _socket.bytesAvailable >= length)
+				return _socket.readUTFBytes(length);
+			return "";
 		}
 		
 		public function readUnsignedByte():uint
