@@ -1,18 +1,19 @@
 package nl.remcokrams.shoutcast.net
 {
-	import flash.events.Event;
-	import flash.events.IOErrorEvent;
-	import flash.events.ProgressEvent;
-	import flash.net.Socket;
-	import flash.net.URLRequest;
-	import flash.net.URLRequestHeader;
-	import flash.net.URLVariables;
-	import flash.utils.ByteArray;
-	import flash.utils.Endian;
-	import flash.utils.IDataInput;
-	import flash.utils.clearTimeout;
-	import flash.utils.setTimeout;
-	import nl.remcokrams.shoutcast.ShoutcastPlayer;
+    import flash.errors.IOError;
+    import flash.events.Event;
+    import flash.events.IOErrorEvent;
+    import flash.events.ProgressEvent;
+    import flash.net.Socket;
+    import flash.net.URLRequest;
+    import flash.net.URLRequestHeader;
+    import flash.net.URLVariables;
+    import flash.utils.ByteArray;
+    import flash.utils.Endian;
+    import flash.utils.IDataInput;
+    import flash.utils.clearTimeout;
+    import flash.utils.setTimeout;
+    import nl.remcokrams.shoutcast.ShoutcastPlayer;
 	
 	
 	/**
@@ -185,8 +186,7 @@ package nl.remcokrams.shoutcast.net
 		}
 		
 		public function close():void {
-			if(_socket.connected)
-				_socket.close();
+			closeQuietly(_socket);
 		}
 		
 		public function connect( request:URLRequest ):void {
@@ -211,10 +211,9 @@ package nl.remcokrams.shoutcast.net
             _socket.removeEventListener(Event.CLOSE, onSocketError);
             _socket.removeEventListener(Event.CONNECT, onSocketConnect);
             _socket.removeEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
-            
-            // close() should happen 1st as socket.close() may throw an IOErrorEvent
-            close();
             _socket.removeEventListener(IOErrorEvent.IO_ERROR, onSocketError);
+            
+            close();
 		}
 		
 		public function startAutoReconnect():void {
@@ -380,6 +379,26 @@ package nl.remcokrams.shoutcast.net
 			else
 				errorCallback(-1);
 		}
+        
+        /** Quietly close socket */
+        private function closeQuietly(s:Socket)
+        {
+            if (s == null)
+                return;
+                
+            try
+            {
+                s.close();
+            }
+            catch (ioe:IOError)
+            {
+                trace("[ShoutcastHTTPClient] IOError caught closing socket (ignoring). Err=(" + ioe + ")");
+            }
+            catch (e:Error)
+            {
+                trace("[ShoutcastHTTPClient] General error caught closing socket (ignoring). Err=(" + e + ")");
+            }
+        }
 	}
 }
 import flash.net.URLRequest;
