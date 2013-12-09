@@ -381,7 +381,7 @@ package nl.remcokrams.shoutcast.net
 		}
         
         /** Quietly close socket */
-        private function closeQuietly(s:Socket)
+        private function closeQuietly(s:Socket):void
         {
             if (s == null)
                 return;
