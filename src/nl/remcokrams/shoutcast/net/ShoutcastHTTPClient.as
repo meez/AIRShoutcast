@@ -164,9 +164,9 @@ package nl.remcokrams.shoutcast.net
 		public function readUTFBytes(length:uint):String
 		{
 			// DW: Attempting to defend against 2030 EOF Errors (socket disconnect or no bytes available)
-			if (_socket.connected && _socket.bytesAvailable >= length)
+			if (_socket.bytesAvailable >= length)
 				return _socket.readUTFBytes(length);
-			return "";
+			return _socket.readUTFBytes(_socket.bytesAvailable);
 		}
 		
 		public function readUnsignedByte():uint
@@ -205,13 +205,16 @@ package nl.remcokrams.shoutcast.net
 		/** Clean up */
 		public function dispose():void
 		{
-			_reconnectMode = false;
-			clearTimeout(_reconnectTimeout);
-			_socket.removeEventListener(Event.CONNECT, onSocketConnect);
-			_socket.removeEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
-			_socket.removeEventListener(IOErrorEvent.IO_ERROR, onSocketError);
-			_socket.removeEventListener(Event.CLOSE, onSocketError);
-			close();
+            _reconnectMode = false;
+            clearTimeout(_reconnectTimeout);
+
+            _socket.removeEventListener(Event.CLOSE, onSocketError);
+            _socket.removeEventListener(Event.CONNECT, onSocketConnect);
+            _socket.removeEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
+            
+            // close() should happen 1st as socket.close() may throw an IOErrorEvent
+            close();
+            _socket.removeEventListener(IOErrorEvent.IO_ERROR, onSocketError);
 		}
 		
 		public function startAutoReconnect():void {
