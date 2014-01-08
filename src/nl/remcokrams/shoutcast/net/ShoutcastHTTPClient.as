@@ -207,7 +207,7 @@ package nl.remcokrams.shoutcast.net
 		{
             _reconnectMode = false;
             clearTimeout(_reconnectTimeout);
-
+            
             _socket.removeEventListener(Event.CLOSE, onSocketError);
             _socket.removeEventListener(Event.CONNECT, onSocketConnect);
             _socket.removeEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
@@ -382,10 +382,24 @@ package nl.remcokrams.shoutcast.net
         
         /** Quietly close socket */
         private function closeQuietly(s:Socket):void
-        {
+        {            
             if (s == null)
                 return;
-                
+            
+            try
+            {
+                // adding this weak listener to catch any IOErrorEvents caught during close()
+                s.addEventListener(IOErrorEvent.IO_ERROR, function(evt:IOErrorEvent):void 
+                    {
+                        evt.currentTarget.removeEventListener(evt.type, arguments.callee);// remove event listener
+                        trace("[ShoutcastHTTPClient] IOErrorEvent caught triggered by close() (ignoring). Event=(" + evt + ")"); 
+                    }, false, 0, true);
+            }
+            catch (e:Error)
+            {
+                trace("[ShoutcastHTTPClient] Could not add IOErrorEvent.IO_ERROR listener to socket about to be closed. Err=(" + e + ")");
+            }
+            
             try
             {
                 s.close();
@@ -398,6 +412,7 @@ package nl.remcokrams.shoutcast.net
             {
                 trace("[ShoutcastHTTPClient] General error caught closing socket (ignoring). Err=(" + e + ")");
             }
+            
         }
 	}
 }

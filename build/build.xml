@@ -15,7 +15,7 @@
 	<compc 
 		src="${src.dir}"
 		configxml="${config.xml}"
-		debug="false"
+		debug="true"
 		sdkConfig="air"
 		output="${deploy.dir}/${ant.project.name}.swc">
 	</compc>
