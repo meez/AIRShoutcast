@@ -248,8 +248,9 @@ package nl.remcokrams.shoutcast.audioformat.mp3
         }
 
 
-        public function toString():String {
-        return "MP3 Version: " + versionID + ", Layer: " + layer + ", Padding: " + padding + ", Bitrate: " + actualBitRate + ", Samplerate: " + actualSampleRate + ", Size: " + frameLength + ", Duration: " + duration;
+        public function toString():String 
+        {
+            return "MP3 Version: " + versionID + ", Layer: " + layer + ", Padding: " + padding + ", Bitrate: " + actualBitRate + ", Samplerate: " + actualSampleRate + ", Size: " + frameLength + ", Duration: " + duration;
         }
     }
 }
