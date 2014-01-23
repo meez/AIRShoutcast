@@ -15,43 +15,27 @@ package nl.remcokrams.shoutcast.audioformat.mp3
 	
 	public class MP3Header
 	{
-		public static const MPEG_V25_SAMPLERATES:Vector.<uint> = Vector.<uint>([11025, 12000, 8000, 0]);
-		public static const MPEG_V2_SAMPLERATES:Vector.<uint> = Vector.<uint>([22050, 24000, 16000, 0]);
-		public static const MPEG_V1_SAMPLERATES:Vector.<uint> = Vector.<uint>([44100, 48000, 32000, 0]);
-		
-		public static const BITRATE_TABLE:Vector.<Vector.<uint>> = Vector.<Vector.<uint>>([
-			Vector.<uint>([	  0,   0,   0,   0,   0]),
-			Vector.<uint>([  32,  32,  32,  32,   8]),
-			Vector.<uint>([  64,  48,  40,  48,  16]),
-			Vector.<uint>([  96,  56,  48,  56,  24]),
-			Vector.<uint>([ 128,  64,  56,  64,  32]),
-			Vector.<uint>([ 160,  80,  64,  80,  40]),
-			Vector.<uint>([ 192,  96,  80,  96,  48]),
-			Vector.<uint>([ 224, 112,  96, 112,  56]),
-			Vector.<uint>([ 256, 128, 112, 128,  64]),
-			Vector.<uint>([ 288, 160, 128, 144,  80]),
-			Vector.<uint>([ 320, 192, 160, 160,  96]),
-			Vector.<uint>([ 352, 224, 192, 176, 112]),
-			Vector.<uint>([ 384, 256, 224, 192, 128]),
-			Vector.<uint>([ 416, 320, 256, 224, 144]),
-			Vector.<uint>([ 448, 384, 320, 256, 160]),
-			Vector.<uint>([   0,   0,   0,   0,   0])
-		]);
-		
-		public static const SAMPLES_PER_FRAME_TABLE:Vector.<Vector.<uint>> = Vector.<Vector.<uint>>([
-			Vector.<uint>([ 384,  384,  384]), //Layer I
-			Vector.<uint>([1152, 1152, 1152]), //Layer II
-			Vector.<uint>([1152,  576,  576])  //Layer III
-		]);
-		
-		//DW: Changed 1st member to 1 as 'samplesPerFrame' is calculated using layer-1, and we never want layer to = -1
-		public static const MPEG_LAYERS:Vector.<uint> = Vector.<uint>( [1,3,2,1] );
-		public static const MPEG_VERSIONS:Vector.<uint> = Vector.<uint>( [3,0,2,1] );
-		
-		public static const STEREO:uint 		= 0;
-		public static const JOINT_STEREO:uint   = 1;
-		public static const DUAL_CHANNEL:uint   = 2;
-		public static const SINGLE_CHANNEL:uint = 3;
+        public static const VERSION_25:int = 0;
+        public static const VERSION_2:int = 2;
+        public static const VERSION_1:int = 3;
+        
+        public static const LAYER_1:int = 3;
+        public static const LAYER_2:int = 2;
+        public static const LAYER_3:int = 1;
+        
+        private static const FrameSyncMask:uint = 0xffe00000;
+        private static const AudioVersionIdMask:uint = 0x180000;
+        private static const LayerMask:uint = 0x60000;
+        private static const ProtectionMask:uint = 0x10000;
+        private static const BitrateMask:uint = 0xf000;
+        private static const SamplingRateMask:uint = 0xc00;
+        private static const PaddingMask:uint = 0x200;
+        
+        private static const BitRateV1L1:Array = [0, 32000, 64000, 96000, 128000, 160000, 192000, 224000, 256000, 288000, 320000, 352000, 384000, 416000, 448000, -1];
+        private static const BitRateV1L2:Array = [0, 32000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 160000, 192000, 224000, 256000, 320000, 384000, -1];
+        private static const BitRateV1L3:Array = [0, 32000, 40000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 160000, 192000, 224000, 256000, 320000, -1];
+        private static const BitRateV2L1:Array = [0, 32000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 144000, 160000, 176000, 192000, 224000, 256000, -1];
+        private static const BitRateV2L2L3:Array = [0, 8000, 16000, 24000, 32000, 40000, 48000, 56000, 64000, 80000, 96000, 112000, 128000, 144000, 160000, -1];        
 		
 		public var versionID:uint;
 		public var layer:uint;
@@ -127,71 +111,138 @@ package nl.remcokrams.shoutcast.audioformat.mp3
 				   layer == otherHeader.layer &&
 				   actualSampleRate == otherHeader.actualSampleRate;
 		}
-		
-		public function parse(buffer:ByteArray, mustEqualHeader:MP3Header):Boolean {
-			var bits:uint = buffer.readUnsignedInt();
-			
-			buffer.position -= 4;
-			
-			if((bits >>> 21) == 0x7FF)
-			{
-				versionID = MPEG_VERSIONS[ (bits >>> 19) & 3 ];
-				layer = MPEG_LAYERS[ (bits >>> 17) & 3 ];
-				protectionAbsense = (bits >>> 16) & 1;
-				bitRateIndex = (bits >>> 12) & 0xF;
-				padding = (bits >>> 9) & 1;
-				sampleRateIndex = (bits >>> 10) & 3;
-				channels = (bits >>> 6) & 3;
-				isStereo = channels < 3;
-				
-				var columnIndex:uint;
-				if(versionID == 1 && layer == 1)
-					columnIndex = 0;
-				else if(versionID == 1 && layer == 2)
-					columnIndex = 1;
-				else if(versionID == 1 && layer == 3)
-					columnIndex = 2;
-				else if(versionID == 2 && layer == 1)
-					columnIndex = 3;
-				else if(versionID == 2 && (layer == 2 || layer == 3))
-					columnIndex = 4;
-				actualBitRate = BITRATE_TABLE[ bitRateIndex ][ columnIndex ] * 1000;
-				
-				switch(versionID)
-				{
-					case 2 : //MPEG Version 2
-						actualSampleRate = MPEG_V2_SAMPLERATES[ sampleRateIndex ];
-						break;
-					
-					case 1 : //MPEG version 1
-						actualSampleRate = MPEG_V1_SAMPLERATES[ sampleRateIndex ];
-						break;
-					
-					case 3 : //MPEG Version 2.5
-						actualSampleRate = MPEG_V25_SAMPLERATES[ sampleRateIndex ];
-						break;
-				}
-				
-				if(!actualBitRate || !actualSampleRate) //invalid bitrate or samplerate
-					return false;
-				
-				if(mustEqualHeader && !mustEqualHeader.equals(this)) //some fields which should be the same have changed
-					return false;
-				
-				var samplesPerFrame:uint = SAMPLES_PER_FRAME_TABLE[ layer-1 ][ versionID-1 ];
-				
-				duration = (samplesPerFrame / actualSampleRate) * 1000;
-				
-				var bps:Number = (samplesPerFrame / 8);
-				frameLength = ( (bps * actualBitRate) / actualSampleRate ) + 
-							  (padding * (layer == 1 ? 4 : 1)) + //padding * slot size
-							  (!protectionAbsense ? 2 : 0); //crc check (we don't this)
-				
-				return true;
-			}
-			
-			return false;
-		}
+        
+        public function parse(stream:ByteArray, mustEqualHeader:MP3Header):Boolean
+        {
+            // Rewrote parse method. See http://www.datavoyage.com/mpgscript/mpeghdr.htm for details -DW
+            
+            if (stream.bytesAvailable < 4)
+                return false;	
+
+            var header:uint = stream.readUnsignedInt();
+            stream.position -= 4;
+            
+            if ((header & FrameSyncMask) ^ FrameSyncMask)
+                return false;
+                
+            this.layer = (header & LayerMask) >> 17;
+            if (this.layer==0)  // 00 is reserved
+                return false;
+
+            this.protectionAbsense = (header & ProtectionMask) >> 16;
+            
+            this.channels = (header >>> 6) & 3;
+            this.isStereo = this.channels < 3;
+
+            this.bitRateIndex = (header & BitrateMask) >> 12;
+            if (this.bitRateIndex==15)  // binary 1111 is 'bad'
+                return false;
+                
+            this.versionID = (header & AudioVersionIdMask) >> 19;	
+            if (this.versionID==1)  // 01 is reserved
+                return false;
+
+            if (this.versionID==VERSION_1)
+            {
+                switch (this.layer)
+                {
+                    case LAYER_1:
+                        this.actualBitRate = BitRateV1L1[this.bitRateIndex];
+                        break;
+                    case LAYER_2:
+                        this.actualBitRate = BitRateV1L2[this.bitRateIndex];
+                        break;
+                    case LAYER_3:
+                        this.actualBitRate = BitRateV1L3[this.bitRateIndex];
+                        break;
+                }
+            }
+            else if (this.versionID==VERSION_2 || this.versionID==VERSION_25)
+            {
+                switch (this.layer)
+                {
+                    case LAYER_1:
+                        this.actualBitRate = BitRateV2L1[bitRateIndex];
+                        break;
+                    case LAYER_2:
+                    case LAYER_3:
+                        this.actualBitRate = BitRateV2L2L3[bitRateIndex];
+                        break;
+                }
+            }
+
+            this.sampleRateIndex = (header & SamplingRateMask) >> 10;
+            if (this.sampleRateIndex==3)
+                return false;
+                
+            switch (versionID)
+            {
+                case VERSION_1:
+                    switch (sampleRateIndex)
+                    {
+                        case 0:
+                            this.actualSampleRate = 44100;
+                            break;
+                        case 1:
+                            this.actualSampleRate = 48000;
+                            break;
+                        case 2:
+                            this.actualSampleRate = 32000;
+                            break;
+                    }
+                    break;
+                    
+                case VERSION_2:
+                    switch (sampleRateIndex)
+                    {
+                        case 0:
+                            this.actualSampleRate = 22050;
+                            break;
+                        case 1:
+                            this.actualSampleRate = 24000;
+                            break;
+                        case 2:
+                            this.actualSampleRate = 16000;
+                            break;
+                    }
+                    break;
+                    
+                case VERSION_25:
+                    switch (sampleRateIndex)
+                    {
+                        case 0:
+                            this.actualSampleRate = 11025;
+                            break;
+                        case 1:
+                            this.actualSampleRate = 12000;
+                            break;
+                        case 2:
+                            this.actualSampleRate = 8000;
+                            break;
+                    }
+                    break;
+            }
+            
+            if(!actualBitRate || !actualSampleRate) //invalid bitrate or samplerate
+                return false;
+                                
+            if(mustEqualHeader && !mustEqualHeader.equals(this)) //some fields which should be the same have changed
+                return false;
+
+            this.padding = (header & PaddingMask) >> 9;
+
+            if (this.layer==LAYER_1)
+                this.frameLength = (12 * this.actualBitRate / this.actualSampleRate + this.padding) * 4;	
+            else if (this.layer==LAYER_2 || this.layer==LAYER_3)
+                this.frameLength = 144 * this.actualBitRate / this.actualSampleRate + this.padding;
+
+            var samplesPerFrame:int = (this.layer==LAYER_1) ? 384 : 1152;
+                
+            this.duration = 1000 * samplesPerFrame / this.actualSampleRate;
+            
+            return true;    
+        }
+
 		
 		public function toString():String {
 			return "MP3 Version: " + versionID + ", Layer: " + layer + ", Padding: " + padding + ", Bitrate: " + actualBitRate + ", Samplerate: " + actualSampleRate + ", Size: " + frameLength + ", Duration: " + duration;
